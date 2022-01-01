@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="main.css">
+  </head>
+  <body>
+    <script type="module">
+
+      import * as THREE from '../build/three.module.js';
+
+      import { OrbitControls } from './jsm/controls/OrbitControls.js';
+      import { FlakesTexture } from './jsm/textures/FlakesTexture.js';
+      import { Reflector } from './jsm/objects/Reflector.js';
+
+      import { GLTFLoader } from './jsm/loaders/GLTFLoader.js';
+      import { EffectComposer } from './jsm/postprocessing/EffectComposer.js';
+      import { RenderPass } from './jsm/postprocessing/RenderPass.js';
+      import { UnrealBloomPass } from './jsm/postprocessing/UnrealBloomPass.js';
+
+
+      const params = {
+        exposure: 1,
+        bloomStrength: 1.5,
+        bloomThreshold: 0,
+        bloomRadius: 0
+      };
+
+
+      let camera, scene, renderer, composer;
+
+      let particleLight;
+      let group;
+
+      var earth_pos = new THREE.Vector3( 0,0,0 );
+      var moon_pos = new THREE.Vector3( 150,150,100 );
+      var venus_pos= new THREE.Vector3( -400, -400, -70);
+      var mars_pos = new THREE.Vector3( -600,-300,300 );
+      var mercury_pos = new THREE.Vector3( 400,1000,500 );
+      var init_pos = [earth_pos, moon_pos, venus_pos, mars_pos, mercury_pos];
+
+      init();
+      animate();
+
+      function init() {
+
+        camera = new THREE.PerspectiveCamera( 27, window.innerWidth / window.innerHeight, 1, 1000000 );
+        camera.position.z = 3000;
+
+        scene = new THREE.Scene();
+
+        group = new THREE.Group();
+        scene.add( group );
+
+        new THREE.CubeTextureLoader()
+          .setPath( 'kenon_star/' )
+          .load( [
+                  'kenon_star_ft.jpg', 'kenon_star_bk.jpg',
+                  'kenon_star_up.jpg', 'kenon_star_dn.jpg',
+                  'kenon_star_rt.jpg', 'kenon_star_lf.jpg'
+                  ],
+            function ( texture ) {
+
+              const earth_geometry = new THREE.SphereGeometry( 100, 1000, 1000 );
+              const moon_geometry = new THREE.SphereGeometry( 50, 1000, 1000 );
+              const mercury_geometry = new THREE.SphereGeometry( 60, 1000, 1000 );
+              const venus_geometry = new THREE.SphereGeometry( 70, 1000, 1000 );
+              const mars_geometry = new THREE.SphereGeometry( 80, 1000, 1000 );
+
+              const textureLoader = new THREE.TextureLoader();
+
+              const earth_diffuse = textureLoader.load( 'earth.jpg' );
+              earth_diffuse.encoding = THREE.sRGBEncoding;
+              earth_diffuse.wrapS = THREE.RepeatWrapping;
+              earth_diffuse.wrapT = THREE.RepeatWrapping;
+              earth_diffuse.repeat.x = 1;
+              earth_diffuse.repeat.y = 1;
+
+              const mars_diffuse = textureLoader.load( 'mars.jpg' );
+              mars_diffuse.encoding = THREE.sRGBEncoding;
+              mars_diffuse.wrapS = THREE.RepeatWrapping;
+              mars_diffuse.wrapT = THREE.RepeatWrapping;
+              mars_diffuse.repeat.x = 1;
+              mars_diffuse.repeat.y = 1;
+
+              const venus_diffuse = textureLoader.load( 'venus.jpg' );
+              venus_diffuse.encoding = THREE.sRGBEncoding;
+              venus_diffuse.wrapS = THREE.RepeatWrapping;
+              venus_diffuse.wrapT = THREE.RepeatWrapping;
+              venus_diffuse.repeat.x = 1;
+              venus_diffuse.repeat.y = 1;
+
+              const mercury_diffuse = textureLoader.load( 'mercury.jpg' );
+              mercury_diffuse.encoding = THREE.sRGBEncoding;
+              mercury_diffuse.wrapS = THREE.RepeatWrapping;
+              mercury_diffuse.wrapT = THREE.RepeatWrapping;
+              mercury_diffuse.repeat.x = 1;
+              mercury_diffuse.repeat.y = 1;
+
+              const moon_diffuse = textureLoader.load( 'moon.jpg' );
+              moon_diffuse.encoding = THREE.sRGBEncoding;
+              moon_diffuse.wrapS = THREE.RepeatWrapping;
+              moon_diffuse.wrapT = THREE.RepeatWrapping;
+              moon_diffuse.repeat.x = 1;
+              moon_diffuse.repeat.y = 1;
+
+              const normalMap1 = textureLoader.load( 'earth_normal_map.tif' );
+              normalMap1.wrapS = THREE.RepeatWrapping;
+              normalMap1.wrapT = THREE.RepeatWrapping;
+
+              const normalMap2 = textureLoader.load( 'Water_1_M_Normal.jpg' );
+
+              const normalMap3 = new THREE.CanvasTexture( new FlakesTexture() );
+              normalMap3.wrapS = THREE.RepeatWrapping;
+              normalMap3.wrapT = THREE.RepeatWrapping;
+              normalMap3.repeat.x = 10;
+              normalMap3.repeat.y = 6;
+              normalMap3.anisotropy = 16;
+
+              const normalMap4 = textureLoader.load('Scratched_gold_01_1K_Normal.png');
+
+              let material_ct = new THREE.MeshPhysicalMaterial( {
+                roughness: 0.5,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                map: earth_diffuse,
+                normalMap: normalMap1
+              } );
+              let mesh_ct = new THREE.Mesh( earth_geometry, material_ct );
+              mesh_ct.position.set = earth_pos;
+              mesh_ct.castShadow = true;
+              mesh_ct.receiveShadow = true;
+              group.add( mesh_ct );
+
+              let material_tr = new THREE.MeshPhysicalMaterial( {
+                roughness: 0.5,
+                clearcoat: 0.0,
+                clearcoatRoughness: 0.4,
+                map: moon_diffuse,
+                //normalMap: normalMap1
+              } );
+              let mesh_tr = new THREE.Mesh( moon_geometry, material_tr );
+              mesh_tr.position.set = moon_pos;
+              mesh_tr.castShadow = true;
+              mesh_tr.receiveShadow = true;
+              group.add( mesh_tr );
+
+              let material_tl = new THREE.MeshPhysicalMaterial( {
+                roughness: 0.5,
+                clearcoatRoughness: 0.1,
+                clearcoat: 1.0,
+                metalness: 0.4,
+                map: mars_diffuse,
+                normalMap: normalMap2
+              } );
+              let mesh_tl = new THREE.Mesh( mars_geometry, material_tl );
+              mesh_tl.position.set = mars_pos;
+              mesh_tl.castShadow = true;
+              mesh_tl.receiveShadow = true;
+              group.add( mesh_tl );
+
+              let material_bl = new THREE.MeshPhysicalMaterial( {
+                roughness: 0.5,
+                clearcoatRoughness: 0.1,
+                clearcoat: 1.0,
+                metalness: 0.4,
+                map: venus_diffuse,
+                normalMap: normalMap3
+              } );
+              let mesh_bl = new THREE.Mesh( venus_geometry, material_bl );
+              mesh_bl.position.set = venus_pos;
+              mesh_bl.castShadow = true;
+              mesh_bl.receiveShadow = true;
+              group.add( mesh_bl );
+
+              let material_br = new THREE.MeshPhysicalMaterial( {
+                roughness: 1.0,
+                clearcoatRoughness: 0.1,
+                clearcoat: 0.3,
+                metalness: 0.2,
+                map: mercury_diffuse,
+                normalMap: normalMap4
+              } );
+              let mesh_br = new THREE.Mesh( mercury_geometry, material_br );
+              mesh_br.position.set = mercury_pos;
+              mesh_br.castShadow = true;
+              mesh_br.receiveShadow = true;
+              group.add( mesh_br );
+
+              scene.background = texture;
+              scene.environment = texture;
+
+            }
+
+          );
+      
+        let urls = [
+          'kenon_star/kenon_star_ft.jpg', 'kenon_star/kenon_star_bk.jpg',
+          'kenon_star/kenon_star_up.jpg', 'kenon_star/kenon_star_dn.jpg',
+          'kenon_star/kenon_star_rt.jpg', 'kenon_star/kenon_star_lf.jpg'
+        ];
+        let loader = new THREE.CubeTextureLoader();
+        let textureCube = loader.load(urls);
+        scene.background = textureCube;
+
+        var sphereGeo = new THREE.SphereGeometry( 100,64,32 );
+
+        const textureLoader = new THREE.TextureLoader();
+
+        const sun_diffuse = textureLoader.load( 'sun.jpg' );
+        sun_diffuse.encoding = THREE.sRGBEncoding;
+        sun_diffuse.wrapS = THREE.RepeatWrapping;
+        sun_diffuse.wrapT = THREE.RepeatWrapping;
+        sun_diffuse.repeat.x = 1;
+        sun_diffuse.repeat.y = 1;
+
+        let material_sun = new THREE.MeshPhongMaterial({
+          emissive: 0xffffff,
+          emissiveIntensity: 0.01,
+          map: sun_diffuse
+        })
+
+        particleLight = new THREE.Mesh( 
+          new THREE.SphereGeometry( 800, 100, 100 ),
+          material_sun
+        );
+        scene.add( particleLight );
+        var pointlight = new THREE.PointLight( 0xffffff, 3,0,5);
+        pointlight.castShadow = true;
+        particleLight.add( pointlight );
+
+        const light = new THREE.AmbientLight( 0x222222 ); // soft white light
+        scene.add( light );
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        document.body.appendChild( renderer.domElement );
+
+        const renderScene = new RenderPass( scene, camera );
+
+        const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 );
+        bloomPass.threshold = params.bloomThreshold;
+        bloomPass.strength = params.bloomStrength;
+        bloomPass.radius = params.bloomRadius;
+
+        composer = new EffectComposer( renderer );
+        composer.addPass( renderScene );
+        composer.addPass( bloomPass );
+
+
+        renderer.outputEncoding = THREE.sRGBEncoding;
+
+        new OrbitControls( camera, renderer.domElement );
+
+        window.addEventListener( 'resize', onWindowResize );
+        
+      }
+
+      function onWindowResize() {
+
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize( width, height );
+
+      }
+
+      function animate() {
+
+        requestAnimationFrame( animate );
+        render();
+      }
+
+      function render() {
+
+        const timer = Date.now() * 0.00025;
+
+        particleLight.position.x = 10*Math.sin( timer * 7 ) * 300;
+        particleLight.position.y = 10*Math.cos( timer * 5 ) * 400;
+        particleLight.position.z = 10*Math.cos( timer * 3 ) * 300;
+
+        for ( let i = 1; i < group.children.length; i ++ ) {
+
+          const child = group.children[ i ];
+          child.rotation.y = 0.005;
+          child.position.x = 1/2*init_pos[i].x+2*Math.sin(timer*i)*init_pos[i].x;
+          child.position.y = 1/2*init_pos[i].y-4*Math.cos(timer*i)*init_pos[i].y;
+          //child.position.z = init_pos[i].z+Math.cos(timer*(7*i+1))*300;
+        }
+      
+        renderer.render( scene, camera );
+        composer.render();
+
+      }
+    
+
+    </script>
+  </body>
+</html>
